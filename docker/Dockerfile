@@ -39,6 +39,7 @@ COPY app /app/app
 COPY alembic /app/alembic
 COPY alembic.ini /app/alembic.ini
 COPY seed_data.py /app/seed_data.py
+COPY mcmc_seed.py /app/mcmc_seed.py
 
 RUN useradd -m appuser
 USER appuser

@@ -14,6 +14,7 @@ from sqlalchemy import delete
 from app.core.database import SessionLocal
 from app.core.security import get_password_hash
 from app.models import Cart, CartItem, Category, Order, OrderItem, Product, ProductImage, Review, Tag, User
+from app.models.product import product_tags
 from app.models.enums import OrderStatus, UserRole
 from app.services.cart_service import cart_service
 from app.services.order_service import order_service
@@ -266,11 +267,16 @@ def seed(force: bool, sessions: int, users_count: int, categories_count: int, pr
         if existing > 0 and not force:
             print("Seed data already exists. Use --force to reseed.")
             return
-
         if force:
-            for model in [Review, OrderItem, Order, CartItem, Cart, ProductImage, Product, Tag, Category, User]:
+            # Delete in reverse dependency order to avoid FK constraint violations
+            for model in [Review, OrderItem, Order, CartItem, Cart, ProductImage, product_tags, Product, Tag, Category, User]:
                 db.execute(delete(model))
             db.commit()
+
+        # if force:
+        #     for model in [Review, OrderItem, Order, CartItem, Cart, ProductImage, Product, Tag, Category, User]:
+        #         db.execute(delete(model))
+        #     db.commit()
 
         data = ensure_seed_data(db, users_count, categories_count, products_count)
         customers: List[User] = data["customers"]
@@ -287,7 +293,12 @@ def seed(force: bool, sessions: int, users_count: int, categories_count: int, pr
             matrix = persona_matrices[persona]
 
             is_guest = random.random() < 0.20
-            guest_cart = cart_service.create_guest_cart(db) if is_guest else None
+            guest_cart = None
+            if is_guest:
+                # SQL Server only allows one NULL user_id, so retrieve or create
+                guest_cart = db.query(Cart).filter(Cart.user_id.is_(None)).first()
+                if not guest_cart:
+                    guest_cart = cart_service.create_guest_cart(db)
             user_cart = cart_service.get_or_create_cart(db, user.id)
 
             trajectory = simulate_session(rng, matrix)

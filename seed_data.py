@@ -11,6 +11,7 @@ from app.core.database import SessionLocal
 from app.core.security import get_password_hash
 from app.models import Cart, CartItem, Category, Order, OrderItem, Product, ProductImage, Review, Tag, User
 from app.models.enums import OrderStatus, UserRole
+from app.models.product import product_tags
 
 
 fake = Faker()
@@ -25,7 +26,8 @@ def seed(force: bool = False) -> None:
             return
 
         if force:
-            for model in [Review, OrderItem, Order, CartItem, Cart, ProductImage, Product, Tag, Category, User]:
+            # Delete in reverse dependency order to avoid FK constraint violations
+            for model in [Review, OrderItem, Order, CartItem, Cart, ProductImage, product_tags, Product, Tag, Category, User]:
                 db.execute(delete(model))
             db.commit()
 
